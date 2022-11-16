@@ -12,10 +12,17 @@ Now, you need a copy of this repo. Run the commands:
 git clone https://github.com/kqzh/nebula-dm.git
 cd nebula-dm
 ```
+
 ## Creating a Deployment
+
+Set which project you want to deploy in.
+```shell
+gcloud config set project <your-gcp-project>
+```
+
 This repo contains two config plans. You can deploy with any of them using command below.
 ```shell
-gcloud deployment-manager deployments create <your-deployment-name> --config parameters.<plan-name>.yaml
+gcloud deployment-manager deployments create <your-deployment-name> --config parameters.standard.yaml
 ```
 The command then passes the cluster configuration to GCP and builds your NebulaGraph Cluster automatically.
 

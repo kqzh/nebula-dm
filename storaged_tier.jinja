@@ -1,0 +1,148 @@
+{% import "path_utils.jinja" as path_utils with context %}
+
+{% set metaServerAddress = properties["metaServerAddress"] %}
+{% set instanceCount = properties["instanceCount"] %}
+{% set zone = properties["zone"] %}
+{% set machineType = properties["machineType"] %}
+{% set networks = [] %}
+{% for network in properties["network"] %}
+{% set _ = networks.append(path_utils.networkPath(network)) %}
+{% endfor %}
+{% set subnetworks = properties["subnetwork"] %}
+{% set externalIPs = properties["externalIP"] %}
+{% set bootDiskType = properties["bootDiskType"] %}
+{% set bootDiskSizeGb = properties["bootDiskSizeGb"] %}
+{% set hasExternalIP = externalIPs is defined and externalIPs[0] != "NONE" %}
+{# Software status only works if the VM has an external IP. #}
+{% set enableStatusWaiter = hasExternalIP %}
+{% if instanceCount >= 3 %}
+{% set metad_instanceCount = 3 %}
+{% else %}
+{% set metad_instanceCount = 1 %}
+{% endif %}
+
+{% if instanceCount <= 0 %}
+resources: []
+{% else %}
+resources:
+  {% for vmIndex in range(instanceCount) %}
+  - name: {{ env["deployment"] }}-storaged-vm-tmpl-{{ vmIndex }}
+    type: vm_instance.py
+    properties:
+      instanceName: {{ env["deployment"] }}-storaged-vm-{{ vmIndex }}
+      sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts
+      zone: {{ zone }}
+      machineType: {{ machineType }}
+      networks:
+      {% for network in networks %}
+        - {{ network }}
+      {% endfor %}
+      {% if subnetworks is defined and subnetworks %}
+      subnetworks:
+      {% for subnetwork in subnetworks %}
+        - {{ subnetwork or '' }}
+      {% endfor %}
+      {% endif %}
+      {% if externalIPs is defined and externalIPs %}
+      externalIPs:
+      {% for externalIP in externalIPs %}
+        - {{ externalIP }}
+      {% endfor %}
+      {% endif %}
+      bootDiskType: {{ bootDiskType }}
+      bootDiskSizeGb: {{ bootDiskSizeGb }}
+      disks:
+        - deviceName: {{ env["deployment"] }}-storaged-vm-{{ vmIndex }}-disk1
+          type: PERSISTENT
+          diskType: {{ properties["storaged_disk1_type"] }}
+          diskSizeGb: {{ properties["storaged_disk1_sizeGb"] }}
+          boot: False
+          autoDelete: True
+      serviceAccounts:
+        - email: default
+          scopes:
+            - 'https://www.googleapis.com/auth/cloud.useraccounts.readonly'
+            - 'https://www.googleapis.com/auth/devstorage.read_only'
+            - 'https://www.googleapis.com/auth/logging.write'
+            - 'https://www.googleapis.com/auth/monitoring.write'
+            - 'https://www.googleapis.com/auth/cloudruntimeconfig'
+      metadata:
+        items:
+          - key: startup-script
+            value: |
+              {{ imports["storaged.sh"]|indent(14) }}
+          {% if enableStatusWaiter %}
+          - key: status-config-url
+            value: $(ref.software-status.config-url)
+          - key: status-variable-path
+            value: $(ref.software-status.variable-path)
+          - key: status-uptime-deadline
+            value: 600
+          {% endif %}
+          - key: ENV_METAD_NODE_HOSTNAMES
+            {% set delimiter = joiner("|") %}
+            value: {% for vmIndex in range(metad_instanceCount) -%}
+              {{- delimiter() }}{{ env["deployment"] }}-storaged-vm-{{ vmIndex -}}.{{ zone }}.c.{{ env["project"] }}.internal
+            {%- endfor %}
+          - key: NEBULA_COMPONENT
+            value: storaged
+      tags:
+        items:
+          - {{ env["deployment"] }}-deployment
+          - {{ env["deployment"] }}-storaged-tier
+  {% endfor %}
+  {% if enableStatusWaiter %}
+  {% if instanceCount > 0 %}
+  - name: software-status
+    type: software_status.py
+    properties:
+      timeout: 600
+      prefix: {{ env['deployment'] }}-storaged
+      waiterDependsOn:
+        {% for vmIndex in range(instanceCount) %}
+        - {{ env["deployment"] }}-storaged-vm-{{ vmIndex }}
+        {% endfor %}
+      {% if instanceCount > 1 %}
+      successNumber: {{ instanceCount }}
+      {% endif %}
+  {% endif %}
+  {% endif %}
+  {% if properties["enableTcp22"] %}
+  - name: {{ env["deployment"] }}-storaged-tcp-22
+    type: compute.v1.firewall
+    properties:
+      network: {{ networks[0] }}
+      {% if properties.get("tcp22SourceRanges") %}
+      sourceRanges:
+        {% for source in properties["tcp22SourceRanges"].split(',') %}
+        - '{{ source | trim }}'
+        {% endfor %}
+      {% else %}
+      sourceRanges: ["0.0.0.0/0"]
+      {% endif %}
+      targetTags: ["{{ env["deployment"] }}-storaged-tier"]
+      allowed:
+        - IPProtocol: TCP
+          ports: ["22"]
+  {% endif %}
+
+outputs:
+  {% for vmIndex in range(instanceCount) %}
+  - name: vmId{{ vmIndex }}
+    value: $(ref.{{ env["deployment"] }}-storaged-vm-{{ vmIndex }}.id)
+  - name: vmExternalIP{{ vmIndex }}
+    {% if hasExternalIP %}
+    value: $(ref.{{ env["deployment"] }}-storaged-vm-tmpl-{{ vmIndex }}.ip)
+    {% else %}
+    value: NONE
+    {% endif %}
+  - name: vmInternalIP{{ vmIndex }}
+    value: $(ref.{{ env["deployment"] }}-storaged-vm-tmpl-{{ vmIndex }}.internalIP)
+  - name: vmName{{ vmIndex }}
+    value: {{ env["deployment"] }}-storaged-vm-{{ vmIndex }}
+  - name: vmSelfLink{{ vmIndex }}
+    value: $(ref.{{ env["deployment"] }}-storaged-vm-{{ vmIndex }}.selfLink)
+  {% endfor %}
+  - name: hasExternalIP
+    value: {{ hasExternalIP }}
+{% endif %}

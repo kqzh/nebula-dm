@@ -1,0 +1,7 @@
+{
+  "defaultDeploymentType": "MULTI_VM",
+  "imageName": "projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts",
+  "projectId": "nebula-cloud-test",
+  "templateName": "nonexistent_template",
+  "useSolutionPackage": true
+}

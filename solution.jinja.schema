@@ -1,0 +1,332 @@
+imports:
+  - path: graphd_tier.jinja
+  - path: storaged_tier.jinja
+  - path: workbench_tier.jinja
+
+info:
+  version: '1.0'
+  title: placeholder Template
+
+required:
+  - zone
+  - graphd_instanceCount
+  - graphd_machineType
+  - graphd_bootDiskType
+  - graphd_bootDiskSizeGb
+  - graphd_network
+  - storaged_instanceCount
+  - storaged_machineType
+  - storaged_bootDiskType
+  - storaged_bootDiskSizeGb
+  - storaged_network
+  - workbench_machineType
+  - workbench_bootDiskType
+  - workbench_bootDiskSizeGb
+  - workbench_network
+
+properties:
+  zone:
+    type: string
+    x-googleProperty:
+      type: GCE_ZONE
+  graphd_instanceCount:
+    type: integer
+    default: 1
+    minimum: 1
+    maximum: 10
+  graphd_machineType:
+    type: string
+    default: e2-standard-2
+    x-googleProperty:
+      type: GCE_MACHINE_TYPE
+      zoneProperty: zone
+      gceMachineType:
+        minCpu: 1
+        minRamGb: 2
+  graphd_network:
+    type: array
+    default: [default]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_NETWORK
+      gceNetwork:
+        allowSharedVpcs: True
+        machineTypeProperty: graphd_machineType
+  graphd_subnetwork:
+    type: array
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_SUBNETWORK
+      zoneProperty: zone
+      gceSubnetwork:
+        networkProperty: graphd_network
+  graphd_externalIP:
+    type: array
+    default: [EPHEMERAL]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_EXTERNAL_IP
+      gceExternalIp:
+        networkProperty: graphd_network
+        notConfigurable: False
+        allowStaticIps: True
+  graphd_bootDiskType:
+    type: string
+    default: pd-ssd
+    x-googleProperty:
+      type: GCE_DISK_TYPE
+      zoneProperty: zone
+  graphd_bootDiskSizeGb:
+    type: integer
+    default: 10
+    minimum: 10
+    maximum: 10000
+    x-googleProperty:
+      type: GCE_DISK_SIZE
+      gceDiskSize:
+        diskTypeProperty: graphd_bootDiskType
+  graphd_disk1_type:
+    type: string
+    default: pd-ssd
+    x-googleProperty:
+      type: GCE_DISK_TYPE
+      zoneProperty: zone
+  graphd_disk1_sizeGb:
+    type: integer
+    default: 10
+    minimum: 10
+    maximum: 10000
+    x-googleProperty:
+      type: GCE_DISK_SIZE
+      gceDiskSize:
+        diskTypeProperty: graphd_disk1_type
+  graphd_enableTcp9669:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: graphd_network
+  graphd_tcp9669SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: graphd_enableTcp9669
+  graphd_enableTcp22:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: graphd_network
+  graphd_tcp22SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: graphd_enableTcp22
+  storaged_instanceCount:
+    type: integer
+    default: 1
+    enum:
+      - 1
+      - 3
+      - 5
+      - 7
+  storaged_machineType:
+    type: string
+    default: e2-standard-2
+    x-googleProperty:
+      type: GCE_MACHINE_TYPE
+      zoneProperty: zone
+      gceMachineType:
+        minCpu: 1
+        minRamGb: 2
+  storaged_network:
+    type: array
+    default: [default]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_NETWORK
+      gceNetwork:
+        allowSharedVpcs: True
+        machineTypeProperty: storaged_machineType
+  storaged_subnetwork:
+    type: array
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_SUBNETWORK
+      zoneProperty: zone
+      gceSubnetwork:
+        networkProperty: storaged_network
+  storaged_externalIP:
+    type: array
+    default: [EPHEMERAL]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_EXTERNAL_IP
+      gceExternalIp:
+        networkProperty: storaged_network
+        notConfigurable: False
+        allowStaticIps: True
+  storaged_bootDiskType:
+    type: string
+    default: pd-ssd
+    x-googleProperty:
+      type: GCE_DISK_TYPE
+      zoneProperty: zone
+  storaged_bootDiskSizeGb:
+    type: integer
+    default: 10
+    minimum: 10
+    maximum: 10000
+    x-googleProperty:
+      type: GCE_DISK_SIZE
+      gceDiskSize:
+        diskTypeProperty: storaged_bootDiskType
+  storaged_disk1_type:
+    type: string
+    default: pd-ssd
+    x-googleProperty:
+      type: GCE_DISK_TYPE
+      zoneProperty: zone
+  storaged_disk1_sizeGb:
+    type: integer
+    default: 10
+    minimum: 10
+    maximum: 10000
+    x-googleProperty:
+      type: GCE_DISK_SIZE
+      gceDiskSize:
+        diskTypeProperty: storaged_disk1_type
+  storaged_enableTcp22:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: storaged_network
+  storaged_tcp22SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: storaged_enableTcp22
+  workbench_instanceCount:
+    type: integer
+    default: 1
+    enum:
+      - 0
+      - 1
+  workbench_machineType:
+    type: string
+    default: e2-standard-2
+    x-googleProperty:
+      type: GCE_MACHINE_TYPE
+      zoneProperty: zone
+      gceMachineType:
+        minCpu: 1
+        minRamGb: 2
+  workbench_network:
+    type: array
+    default: [default]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_NETWORK
+      gceNetwork:
+        allowSharedVpcs: True
+        machineTypeProperty: workbench_machineType
+  workbench_subnetwork:
+    type: array
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_SUBNETWORK
+      zoneProperty: zone
+      gceSubnetwork:
+        networkProperty: workbench_network
+  workbench_externalIP:
+    type: array
+    default: [EPHEMERAL]
+    minItems: 1
+    maxItems: 8
+    x-googleProperty:
+      type: GCE_EXTERNAL_IP
+      gceExternalIp:
+        networkProperty: workbench_network
+        notConfigurable: False
+        allowStaticIps: True
+  workbench_bootDiskType:
+    type: string
+    default: pd-balanced
+    x-googleProperty:
+      type: GCE_DISK_TYPE
+      zoneProperty: zone
+  workbench_bootDiskSizeGb:
+    type: integer
+    default: 10
+    minimum: 10
+    maximum: 10000
+    x-googleProperty:
+      type: GCE_DISK_SIZE
+      gceDiskSize:
+        diskTypeProperty: workbench_bootDiskType
+  workbench_enableTcp22:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: workbench_network
+  workbench_tcp22SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: workbench_enableTcp22
+  workbench_enableTcp7002:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: workbench_network
+  workbench_tcp7002SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: workbench_enableTcp7002
+  workbench_enableTcp7005:
+    type: boolean
+    default: True
+    x-googleProperty:
+      type: GCE_FIREWALL
+      gceFirewall:
+        networkProperty: workbench_network
+  workbench_tcp7005SourceRanges:
+    type: string
+    x-googleProperty:
+      type: GCE_FIREWALL_RANGE
+      gceFirewallRange:
+        firewallProperty: workbench_enableTcp7005
+  workbench_enableDashboard:
+    type: boolean
+    default: True
+  workbench_enableExplorer:
+    type: boolean
+    default: True
+
+outputs:
+  deployment:
+    type: string
+  project:
+    type: string

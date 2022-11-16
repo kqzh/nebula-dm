@@ -1,0 +1,31 @@
+imports:
+- path: solution.jinja
+
+resources:
+- name: solution
+  type: solution.jinja
+  properties:
+    # The zone determines which computing resources are available and where data is stored and used
+    zone: us-central1-f
+    # Specify graph instance count between 1 and 10
+    graphd_instanceCount: 3
+    # Specify graph instance machine type
+    graphd_machineType: e2-standard-2
+    # Specify graph instance network
+    graphd_network: [default]
+    # Specify storage instance count, support 1, 3, 5, 7
+    storaged_instanceCount: 3
+    # Specify storage instance machine type
+    storaged_machineType: e2-standard-2
+    # Specify storage instance network
+    storaged_network: [ default ]
+    # Specify storage instance data disk size,
+    storaged_disk1_sizeGb: 10
+    # Specify workbench instance machine type
+    workbench_machineType: e2-standard-2
+    # Specify workbench instance network
+    workbench_network: [default]
+
+outputs:
+- name: nebulagraph
+  value: $(ref.solution)

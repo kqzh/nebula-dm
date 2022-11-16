@@ -1,0 +1,124 @@
+{% import "path_utils.jinja" as path_utils with context %}
+
+{% set allTiersCount = 3 %}
+{% set tiersWithNoExternalIPCount = 0 %}
+{% set graphd_externalIPs = properties["graphd_externalIP"] %}
+{% if graphd_externalIPs and graphd_externalIPs[0] == "NONE" %}
+{% set tiersWithNoExternalIPCount = tiersWithNoExternalIPCount + 1 %}
+{% endif %}
+{% set graphd_mainNetwork = path_utils.networkPath(properties["graphd_network"][0]) %}
+{% set storaged_externalIPs = properties["storaged_externalIP"] %}
+{% if storaged_externalIPs and storaged_externalIPs[0] == "NONE" %}
+{% set tiersWithNoExternalIPCount = tiersWithNoExternalIPCount + 1 %}
+{% endif %}
+{% set storaged_mainNetwork = path_utils.networkPath(properties["storaged_network"][0]) %}
+{% set workbench_externalIPs = properties["workbench_externalIP"] %}
+{% if workbench_externalIPs and workbench_externalIPs[0] == "NONE" %}
+{% set tiersWithNoExternalIPCount = tiersWithNoExternalIPCount + 1 %}
+{% endif %}
+{% set workbench_mainNetwork = path_utils.networkPath(properties["workbench_network"][0]) %}
+{% if properties["storaged_instanceCount"] >= 3 %}
+{% set metad_instanceCount = 3 %}
+{% else %}
+{% set metad_instanceCount = 1 %}
+{% endif %}
+{% if properties["workbench_enableDashboard"] or properties["workbench_enableExplorer"] %}
+{% set workbench_instanceCount = 1 %}
+{% else %}
+{% set workbench_instanceCount = 0 %}
+{% endif %}
+
+resources:
+  - name: graphd-tier
+    type: graphd_tier.jinja
+    properties:
+    {% set delimiter = joiner(",") %}
+      metaServerAddress: {% for vmIndex in range(metad_instanceCount) -%}
+          {{- delimiter() }}$(ref.storaged-tier.vmInternalIP{{ vmIndex }}):9559
+    {%- endfor %}
+      instanceCount: {{ properties["graphd_instanceCount"] }}
+      zone: {{ properties["zone"] }}
+      network: {{ properties["graphd_network"] }}
+      {% if properties.get("graphd_subnetwork") %}
+      subnetwork: {{ properties["graphd_subnetwork"] }}
+      {% endif %}
+      {% if properties.get("graphd_externalIP") %}
+      externalIP: {{ properties["graphd_externalIP"] }}
+      {% endif %}
+      machineType: {{ properties["graphd_machineType"] }}
+      bootDiskType: {{ properties["graphd_bootDiskType"] }}
+      bootDiskSizeGb: {{ properties["graphd_bootDiskSizeGb"] }}
+      enableTcp9669: {{ properties["graphd_enableTcp9669"] }}
+      {% if properties.get("graphd_tcp9669SourceRanges") %}
+      tcp9669SourceRanges: {{ properties["graphd_tcp9669SourceRanges"] }}
+      {% endif %}
+      enableTcp22: {{ properties["graphd_enableTcp22"] }}
+      {% if properties.get("graphd_tcp22SourceRanges") %}
+      tcp22SourceRanges: {{ properties["graphd_tcp22SourceRanges"] }}
+      {% endif %}
+      graphd_disk1_type: {{ properties["graphd_disk1_type"] }}
+      graphd_disk1_sizeGb: {{ properties["graphd_disk1_sizeGb"] }}
+  - name: storaged-tier
+    type: storaged_tier.jinja
+    properties:
+      instanceCount: {{ properties["storaged_instanceCount"] }}
+      zone: {{ properties["zone"] }}
+      network: {{ properties["storaged_network"] }}
+      {% if properties.get("storaged_subnetwork") %}
+      subnetwork: {{ properties["storaged_subnetwork"] }}
+      {% endif %}
+      {% if properties.get("storaged_externalIP") %}
+      externalIP: {{ properties["storaged_externalIP"] }}
+      {% endif %}
+      machineType: {{ properties["storaged_machineType"] }}
+      bootDiskType: {{ properties["storaged_bootDiskType"] }}
+      bootDiskSizeGb: {{ properties["storaged_bootDiskSizeGb"] }}
+      enableTcp22: {{ properties["storaged_enableTcp22"] }}
+      {% if properties.get("storaged_tcp22SourceRanges") %}
+      tcp22SourceRanges: {{ properties["storaged_tcp22SourceRanges"] }}
+      {% endif %}
+      storaged_disk1_type: {{ properties["storaged_disk1_type"] }}
+      storaged_disk1_sizeGb: {{ properties["storaged_disk1_sizeGb"] }}
+  - name: workbench-tier
+    type: workbench_tier.jinja
+    properties:
+      instanceCount: {{ workbench_instanceCount }}
+      zone: {{ properties["zone"] }}
+      network: {{ properties["workbench_network"] }}
+      {% if properties.get("workbench_subnetwork") %}
+      subnetwork: {{ properties["workbench_subnetwork"] }}
+      {% endif %}
+      {% if properties.get("workbench_externalIP") %}
+      externalIP: {{ properties["workbench_externalIP"] }}
+      {% endif %}
+      machineType: {{ properties["workbench_machineType"] }}
+      bootDiskType: {{ properties["workbench_bootDiskType"] }}
+      bootDiskSizeGb: {{ properties["workbench_bootDiskSizeGb"] }}
+      enableTcp22: {{ properties["workbench_enableTcp22"] }}
+      {% if properties.get("workbench_tcp22SourceRanges") %}
+      tcp22SourceRanges: {{ properties["workbench_tcp22SourceRanges"] }}
+      {% endif %}
+      enableTcp7002: {{ properties["workbench_enableTcp7002"] }}
+      {% if properties.get("workbench_tcp7002SourceRanges") %}
+      tcp7002SourceRanges: {{ properties["workbench_tcp7002SourceRanges"] }}
+      {% endif %}
+      enableTcp7005: {{ properties["workbench_enableTcp7005"] }}
+      {% if properties.get("workbench_tcp7005SourceRanges") %}
+      tcp7005SourceRanges: {{ properties["workbench_tcp7005SourceRanges"] }}
+      {% endif %}
+      enableDashboard: {{ properties["workbench_enableDashboard"] }}
+      enableExplorer: {{ properties["workbench_enableExplorer"] }}
+
+outputs:
+  {% for vmIndex in range(properties["graphd_instanceCount"]) %}
+  - name: graphd{{ vmIndex }}_external_addr
+    value: $(ref.graphd-tier.vmExternalIP{{ vmIndex }}):9669
+  - name: graphd{{ vmIndex }}_internal_addr
+    value: $(ref.graphd-tier.vmInternalIP{{ vmIndex }}):9669
+  {% endfor %}
+  {% for vmIndex in range(workbench_instanceCount) %}
+  - name: dashboard_addr
+    value: http://$(ref.workbench-tier.vmExternalIP{{ vmIndex }}):7005
+  - name: explorer_addr
+    value: http://$(ref.workbench-tier.vmExternalIP{{ vmIndex }}):7002
+  {% endfor %}
